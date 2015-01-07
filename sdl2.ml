@@ -2,7 +2,7 @@
 open Ctypes;;
 open Foreign;;
 open Unsigned;;
-open Core.Result;;
+open Core;;
 module Rect : sig
   type rect = {x: int; y: int; w: int; h: int};;
   type t;;
@@ -51,7 +51,7 @@ module Init : sig
   val init_events : int;;
   val init_everything : int;;
 
-  val init : int -> unit;;
+  val init : int -> (unit, string) Result.t;;
 end = struct
   let init_timer = 1;;
   let init_audio = 16;;
@@ -65,16 +65,16 @@ end = struct
 
   let init flags =
     if init_f flags = 1
-    then begin
-	Printf.eprintf "SDL failed to initialize, this may help: %s\n" (Error.get_error ());
-	raise Exit;
-      end;;
+    then
+      Result.Error (Error.get_error ())
+    else
+      Result.Ok ()
 end
 		
 module Window : sig
   type t
   val t : t typ;;
-  val make : string -> int -> int -> int -> int -> int -> t option
+  val make : string -> int -> int -> int -> int -> int -> (t, string) Result.t
 end = struct
   type t = unit ptr;;
   let t : t typ = ptr void;;
@@ -83,12 +83,12 @@ end = struct
     let win = create_window_f title x y w h flags in
     if  win <> null
     then
-      Some win
+      Result.Ok win
     else
-      None;;
+      Result.Error (Error.get_error ());;
 end
 	
-let delay = foreign "SDL_Delay" (int @-> returning void);;
+
 
 
 module Render : sig
@@ -97,8 +97,8 @@ module Render : sig
   type texture
   val texture : texture typ
   val texture_exists : texture -> bool
-  val make : Window.t -> int -> t option
-  val copy : Rect.rect -> Rect.rect -> t -> texture -> (unit, string) Core.Result.t
+  val make : Window.t -> int -> (t, string) Result.t
+  val copy : Rect.rect -> Rect.rect -> t -> texture -> (unit, string) Result.t
   val present : t -> unit
 end = struct
   type t = unit ptr;;
@@ -114,22 +114,22 @@ end = struct
     let rend = create_renderer_f window ~-1 flags in (* ~-1 is to avoid confusing the parser, it just means -1*)
     if rend <> null
     then
-      Some rend
+      Result.Ok rend
     else
-      None;;
+      Result.Error (Error.get_error ());;
 
   let copy_f = foreign "SDL_RenderCopy" (t @-> texture @-> Rect.t @-> Rect.t @-> returning int);;
   let copy src dest renderer texture =
     let ret = copy_f renderer texture src dest in
     if ret = 0 then
-      Ok ()
+      Result.Ok ()
     else
-      Error (Error.get_error ());;
+      Result.Error (Error.get_error ());;
     
   let present = foreign "SDL_RenderPresent" (t @-> returning void);;
 end
 
-let quit = foreign "SDL_Quit" (void @-> returning void);;
+
 
 module Event = struct
   let quit_event = 0x100;;
@@ -164,13 +164,14 @@ module Event = struct
     let window = field t "window" window;;
       seal t;;
 
+      let etype event = getf event etype;;
       let poll_event = foreign "SDL_PollEvent" (ptr t @-> returning int);;
 end
 		 
 module Image : sig
   val quit : unit -> unit -> unit;;
   val load_f : Render.t -> string -> Render.texture;;
-  val load : Render.t -> string -> Render.texture option;;
+  val load : Render.t -> string -> (Render.texture, string) Result.t;;
 end = struct
   let quit () = foreign "IMG_Quit" (void @-> returning void);;
   let load_f = foreign "IMG_LoadTexture" (Render.t @-> string @-> returning Render.texture);;
@@ -178,8 +179,15 @@ end = struct
     let tex = load_f renderer texname in
     if Render.texture_exists tex
     then
-      Some tex
+      Result.Ok tex
     else
-      None;;
+      Result.Error (Error.get_error ());;
 end
   
+module Etc : sig
+  val delay : int -> unit
+  val quit : unit -> unit
+end = struct
+  let delay = foreign "SDL_Delay" (int @-> returning void);;
+  let quit = foreign "SDL_Quit" (void @-> returning void);;
+end
