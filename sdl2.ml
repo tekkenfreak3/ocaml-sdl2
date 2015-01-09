@@ -132,40 +132,58 @@ end
 
 
 module Event = struct
-  let quit_event = 0x100;;
-  let keydown_event = 0x300;;
-  let keyup_event = 0x301;;
-  type window;;
-  let window : window structure typ = structure "SDL_WindowEvent";;
-  let wtype = field window "type" int;;
-  let timestamp = field window "timestamp" int;;
-  let windowID = field window "type" int;;
-  let win = field window "type" int;;
-  let data1 = field window "type" int;;
-  let data2 = field window "type" int;;
-  let window_data3 = field window "type" int;;
-  let window_data4 = field window "type" int;;
-  let window_data5 = field window "type" int;;
-  let window_data6 = field window "type" int;;
-  let window_data7 = field window "type" int;;
-  let window_data8 = field window "type" int;;
-  let window_data9 = field window "type" int;;
-  let window_data10 = field window "type" int;;
-  let window_data11 = field window "type" int;;
-  let window_data12 = field window "type" int;;
-  let window_data13 = field window "type" int;;
-  let window_data14 = field window "type" int;;
-    
-    seal window;;
-      
-    type t;;
-    let t: t union typ = union "SDL_Event";;
-    let etype = field t "type" int;;
-    let window = field t "window" window;;
-      seal t;;
 
-      let etype event = getf event etype;;
-      let poll_event = foreign "SDL_PollEvent" (ptr t @-> returning int);;
+  type window_event_f;;
+  let window_event_f : window_event_f structure typ = structure "SDL_WindowEvent";;
+    let wtype = field window_event_f "type" int;;
+    let timestamp = field window_event_f "timestamp" int;;
+    let windowID = field window_event_f "type" int;;
+    let win = field window_event_f "type" int;;
+    let data1 = field window_event_f "type" int;;
+    let data2 = field window_event_f "type" int;;
+    let window_data3 = field window_event_f "type" int;;
+    let window_data4 = field window_event_f "type" int;;
+    let window_data5 = field window_event_f "type" int;;
+    let window_data6 = field window_event_f "type" int;;
+    let window_data7 = field window_event_f "type" int;;
+    let window_data8 = field window_event_f "type" int;;
+    let window_data9 = field window_event_f "type" int;;
+    let window_data10 = field window_event_f "type" int;;
+    let window_data11 = field window_event_f "type" int;;
+    let window_data12 = field window_event_f "type" int;;
+    let window_data13 = field window_event_f "type" int;;
+    let window_data14 = field window_event_f "type" int;;
+  seal window_event_f;;
+
+  type sdl_event;;
+  let sdl_event: sdl_event union typ = union "SDL_Event";;
+  let etype = field sdl_event "type" int;;
+  let window = field sdl_event "window" window_event_f;;
+    seal sdl_event;;
+
+  type window_event = {timestamp: int; window_id: int; data1: int; data2: int};;
+
+      
+  type t =
+    | Quit
+    | Window of window_event
+    | None;;
+
+    (* | KeyDown of keydown_event *)
+  (* | KeyUp of keyup_event;; *)
+  let event_of_sdl_event sevent =
+    let ty = getf sevent etype in
+    match ty with
+    |0x100 -> Quit
+    |0x200 -> begin
+			    let wevent = (getf sevent window) in
+			    Window {timestamp= (getf wevent timestamp); window_id= (getf wevent windowID);data1= (getf wevent data1);data2= (getf wevent data2)} end
+    |_ -> None;;
+  let poll_event_f = foreign "SDL_PollEvent" (ptr sdl_event @-> returning int);;
+  let poll_event () =
+    let e = make sdl_event in
+    ignore (poll_event_f (addr e));
+    event_of_sdl_event e;;
 end
 		 
 module Image : sig

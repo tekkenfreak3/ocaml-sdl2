@@ -5,7 +5,7 @@ let die str =
   Printf.eprintf "FATAL: %s\n" str;
   raise Exit;;
 
-let rec main () = 
+let main () = 
   ignore (Init.init Init.init_everything);
   let win = match (Window.make "foobar?" 640 480 640 480 0) with
     |Ok w -> w
@@ -21,12 +21,9 @@ let rec main () =
   let rec iloop () =
     ignore (Render.copy {x=0;y=0;w=3000;h=3000} {x=0;y=0;w=640;h=480} renderer img);
     Render.present renderer;
-    let ev = Ctypes.make Event.t in
-    ignore (Event.poll_event (Ctypes.addr ev));
-
-    if (Event.etype ev) <> Event.quit_event
-    then
-      iloop ()
+    match (Event.poll_event ()) with
+    |Quit -> ()
+    |_ -> iloop ()
   in
   iloop ();
   Etc.quit ();; 
