@@ -23,6 +23,7 @@ let main () =
     Render.present renderer;
     match (Event.poll_event ()) with
     |Quit -> ()
+    |Key k -> Printf.printf "key event: %d %B %B\n" k.timestamp (k.state = Event.KeyboardEvent.Pressed) k.repeat; flush stdout; iloop ()
     |_ -> iloop ()
   in
   iloop ();

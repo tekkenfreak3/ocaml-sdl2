@@ -1,4 +1,6 @@
 (* Copyright (C) 2014 Daniel Wilkins  *)
+(* This code contains many magic numbers. If you see a plain number then that's almost certainly why. *)
+
 open Ctypes;;
 open Foreign;;
 open Unsigned;;
@@ -135,50 +137,128 @@ module Event = struct
 
   type window_event_f;;
   let window_event_f : window_event_f structure typ = structure "SDL_WindowEvent";;
-    let wtype = field window_event_f "type" int;;
-    let timestamp = field window_event_f "timestamp" int;;
-    let windowID = field window_event_f "type" int;;
-    let win = field window_event_f "type" int;;
-    let data1 = field window_event_f "type" int;;
-    let data2 = field window_event_f "type" int;;
-    let window_data3 = field window_event_f "type" int;;
-    let window_data4 = field window_event_f "type" int;;
-    let window_data5 = field window_event_f "type" int;;
-    let window_data6 = field window_event_f "type" int;;
-    let window_data7 = field window_event_f "type" int;;
-    let window_data8 = field window_event_f "type" int;;
-    let window_data9 = field window_event_f "type" int;;
-    let window_data10 = field window_event_f "type" int;;
-    let window_data11 = field window_event_f "type" int;;
-    let window_data12 = field window_event_f "type" int;;
-    let window_data13 = field window_event_f "type" int;;
-    let window_data14 = field window_event_f "type" int;;
-  seal window_event_f;;
+  let etype = field window_event_f "type" int;;
+  let timestamp = field window_event_f "timestamp" int;;
+  let windowID = field window_event_f "type" int;;
+  let win = field window_event_f "type" int;;
+  let data1 = field window_event_f "type" int;;
+  let data2 = field window_event_f "type" int;;
+  let window_data3 = field window_event_f "type" int;;
+  let window_data4 = field window_event_f "type" int;;
+  let window_data5 = field window_event_f "type" int;;
+  let window_data6 = field window_event_f "type" int;;
+  let window_data7 = field window_event_f "type" int;;
+  let window_data8 = field window_event_f "type" int;;
+  let window_data9 = field window_event_f "type" int;;
+  let window_data10 = field window_event_f "type" int;;
+  let window_data11 = field window_event_f "type" int;;
+  let window_data12 = field window_event_f "type" int;;
+  let window_data13 = field window_event_f "type" int;;
+  let window_data14 = field window_event_f "type" int;;
+    seal window_event_f;;
+
+
+    
+
+  type window_event = {timestamp: int; window_id: int; data1: int; data2: int};;
+
+  let window_event_of_window_event_f wef = {timestamp= (getf wef timestamp); window_id= (getf wef windowID);data1= (getf wef data1);data2= (getf wef data2)};;
+
+  module KeyboardEvent = struct
+    let bool_of_int i = match i with
+      |0 -> false
+      |_ -> true;;
+
+    type keysym_f;;
+    let keysym_f : keysym_f structure typ =  structure "SDL_Keysym";;
+    let scancode = field keysym_f "scancode" int;; (*not to be "fixed", these are defined as machine int types*)
+    let sym = field keysym_f "sym" int;;
+    let modkey = field keysym_f "mod" uint16_t;;
+    let unused = field keysym_f "unused" uint32_t;;
+    seal keysym_f;;
+  
+
+    type key_event_f;;
+    let key_event_f : key_event_f structure typ = structure "SDL_KeyboardEvent";;
+    let etype = field key_event_f "type" uint32_t;;
+    let timestamp = field key_event_f "timestamp" uint32_t;;
+    let windowID = field key_event_f "windowID" uint32_t;;
+    let state = field key_event_f "state" uint8_t;;
+    let repeat = field key_event_f "repeat" uint8_t;;
+    let padding = field key_event_f "padding2" uint16_t;; (*WARNING this is 2 u8s in the original source. it shouldn't mak ea difference but if a bug happens...*)
+    let keysym = field key_event_f "keysym" keysym_f;;
+    seal key_event_f;;
+
+
+    type scancode = ScancodeUnknown | ScancodeZ | ScancodeUp | ScancodeDown | ScancodeLeft | ScancodeRight | ScancodeEsc;;
+    let scancode_of_sdl_scancode sk = match sk with
+      |29 -> ScancodeZ
+      |41 -> ScancodeEsc
+      |79 -> ScancodeLeft
+      |80 -> ScancodeRight
+      |81 -> ScancodeDown
+      |82 -> ScancodeUp
+      |_ -> ScancodeUnknown;;
+
+
+    (* sym isn't implemented for now. it's just a mapping of a key to its unicode representation*)
+    type modkey = ModNone | ModLShift | ModRShift | ModLCtrl | ModRCtrl | ModLAlt | ModRAlt | ModLGui | ModRGui | ModNumLk | ModCaps | ModMode;;
+    let modkey_of_sdl_modkey mk = match Unsigned.UInt16.to_int mk with
+      |0x0 -> ModNone
+      |0x1 -> ModLShift
+      |0x2 -> ModRShift
+      |0x40 -> ModLCtrl
+      |0x80 -> ModRCtrl
+      |0x100 -> ModLAlt
+      |0x200 -> ModRAlt
+      |0x400 -> ModLGui
+      |0x800 -> ModRGui
+      |0x1000 -> ModNumLk
+      |0x2000 -> ModCaps
+      |0x4000 -> ModMode;;
+      
+    type keysym = {scancode: scancode; modkey: modkey};;
+
+    type key_state = Released | Pressed;;
+    let key_state_of_sdl_keystate ks = if Unsigned.UInt8.to_int ks = 1 then Pressed else Released;;
+    type t = {timestamp: int; window_id: int; state: key_state; repeat: bool; keysym: keysym};;
+
+    let of_key_event_f ke = {timestamp= (Unsigned.UInt32.to_int (getf ke timestamp)); window_id= (Unsigned.UInt32.to_int (getf ke windowID)); state= (key_state_of_sdl_keystate (getf ke state)); repeat= (bool_of_int (Unsigned.UInt8.to_int (getf ke repeat)));keysym = {scancode= (scancode_of_sdl_scancode (((getf ke keysym) |> getf) scancode)) ;modkey = (modkey_of_sdl_modkey (((getf ke keysym) |> getf) modkey))}}
+  end
+
+  type t =
+    | Quit
+    | Window of window_event
+    | Key of KeyboardEvent.t
+    | None;;
 
   type sdl_event;;
   let sdl_event: sdl_event union typ = union "SDL_Event";;
   let etype = field sdl_event "type" int;;
   let window = field sdl_event "window" window_event_f;;
+  let keyboard = field sdl_event "key" KeyboardEvent.key_event_f;;
     seal sdl_event;;
-
-  type window_event = {timestamp: int; window_id: int; data1: int; data2: int};;
-
       
-  type t =
-    | Quit
-    | Window of window_event
-    | None;;
 
-    (* | KeyDown of keydown_event *)
-  (* | KeyUp of keyup_event;; *)
+
+
+
   let event_of_sdl_event sevent =
     let ty = getf sevent etype in
     match ty with
     |0x100 -> Quit
-    |0x200 -> begin
-			    let wevent = (getf sevent window) in
-			    Window {timestamp= (getf wevent timestamp); window_id= (getf wevent windowID);data1= (getf wevent data1);data2= (getf wevent data2)} end
+    |0x200 ->  Window (window_event_of_window_event_f (getf sevent window))
+
+    |0x300 -> begin
+	      let kevent = (getf sevent keyboard) in
+	      Key (KeyboardEvent.of_key_event_f kevent)
+	    end
+    |0x301 -> begin
+	      let kevent = (getf sevent keyboard) in
+	      Key (KeyboardEvent.of_key_event_f kevent)
+	    end
     |_ -> None;;
+    
   let poll_event_f = foreign "SDL_PollEvent" (ptr sdl_event @-> returning int);;
   let poll_event () =
     let e = make sdl_event in
