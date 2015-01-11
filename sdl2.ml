@@ -100,7 +100,7 @@ module Render : sig
   val texture : texture typ
   val texture_exists : texture -> bool
   val make : Window.t -> int -> (t, string) Result.t
-  val copy : Rect.rect -> Rect.rect -> t -> texture -> (unit, string) Result.t
+  val copy :  t -> texture -> ?src:Rect.rect -> ?dest:Rect.rect -> unit -> (unit, string) Result.t
   val present : t -> unit
 end = struct
   type t = unit ptr;;
@@ -121,7 +121,7 @@ end = struct
       Result.Error (Error.get_error ());;
 
   let copy_f = foreign "SDL_RenderCopy" (t @-> texture @-> Rect.t @-> Rect.t @-> returning int);;
-  let copy src dest renderer texture =
+  let copy renderer texture ?(src={Rect.x=0;Rect.y=0;Rect.w=0;Rect.h=0;}) ?(dest={Rect.x=0;Rect.y=0;Rect.w=0;Rect.h=0}) () =
     let ret = copy_f renderer texture src dest in
     if ret = 0 then
       Result.Ok ()

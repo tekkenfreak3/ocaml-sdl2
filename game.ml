@@ -18,8 +18,9 @@ let main () =
     |Error e -> die e
   in
 
+  let render = Render.copy renderer in
   let rec iloop () =
-    ignore (Render.copy {x=0;y=0;w=0;h=0} {x=0;y=0;w=0;h=0} renderer img);
+    ignore (render img  ());
     Render.present renderer;
     match (Event.poll_event ()) with
     |Quit -> ()
