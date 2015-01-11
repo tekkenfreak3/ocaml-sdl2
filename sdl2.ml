@@ -135,35 +135,36 @@ end
 
 module Event = struct
 
-  type window_event_f;;
-  let window_event_f : window_event_f structure typ = structure "SDL_WindowEvent";;
-  let etype = field window_event_f "type" int;;
-  let timestamp = field window_event_f "timestamp" int;;
-  let windowID = field window_event_f "type" int;;
-  let win = field window_event_f "type" int;;
-  let data1 = field window_event_f "type" int;;
-  let data2 = field window_event_f "type" int;;
-  let window_data3 = field window_event_f "type" int;;
-  let window_data4 = field window_event_f "type" int;;
-  let window_data5 = field window_event_f "type" int;;
-  let window_data6 = field window_event_f "type" int;;
-  let window_data7 = field window_event_f "type" int;;
-  let window_data8 = field window_event_f "type" int;;
-  let window_data9 = field window_event_f "type" int;;
-  let window_data10 = field window_event_f "type" int;;
-  let window_data11 = field window_event_f "type" int;;
-  let window_data12 = field window_event_f "type" int;;
-  let window_data13 = field window_event_f "type" int;;
-  let window_data14 = field window_event_f "type" int;;
-    seal window_event_f;;
+  module WindowEvent = struct
+    type window_event_f;;
+    let window_event_f : window_event_f structure typ = structure "SDL_WindowEvent";;
+    let etype = field window_event_f "type" int;;
+    let timestamp = field window_event_f "timestamp" int;;
+    let windowID = field window_event_f "type" int;;
+    let win = field window_event_f "type" int;;
+    let data1 = field window_event_f "type" int;;
+    let data2 = field window_event_f "type" int;;
+    let window_data3 = field window_event_f "type" int;;
+    let window_data4 = field window_event_f "type" int;;
+    let window_data5 = field window_event_f "type" int;;
+    let window_data6 = field window_event_f "type" int;;
+    let window_data7 = field window_event_f "type" int;;
+    let window_data8 = field window_event_f "type" int;;
+    let window_data9 = field window_event_f "type" int;;
+    let window_data10 = field window_event_f "type" int;;
+    let window_data11 = field window_event_f "type" int;;
+    let window_data12 = field window_event_f "type" int;;
+    let window_data13 = field window_event_f "type" int;;
+    let window_data14 = field window_event_f "type" int;;
+      seal window_event_f;;
 
 
-    
+	
 
-  type window_event = {timestamp: int; window_id: int; data1: int; data2: int};;
+    type t = {timestamp: int; window_id: int; data1: int; data2: int};;
 
-  let window_event_of_window_event_f wef = {timestamp= (getf wef timestamp); window_id= (getf wef windowID);data1= (getf wef data1);data2= (getf wef data2)};;
-
+    let of_window_event_f wef = {timestamp= (getf wef timestamp); window_id= (getf wef windowID);data1= (getf wef data1);data2= (getf wef data2)};;
+  end
   module KeyboardEvent = struct
     let bool_of_int i = match i with
       |0 -> false
@@ -215,7 +216,8 @@ module Event = struct
       |0x800 -> ModRGui
       |0x1000 -> ModNumLk
       |0x2000 -> ModCaps
-      |0x4000 -> ModMode;;
+      |0x4000 -> ModMode
+      |_ -> ModNone;;
       
     type keysym = {scancode: scancode; modkey: modkey};;
 
@@ -228,14 +230,14 @@ module Event = struct
 
   type t =
     | Quit
-    | Window of window_event
+    | Window of WindowEvent.t
     | Key of KeyboardEvent.t
     | None;;
 
   type sdl_event;;
   let sdl_event: sdl_event union typ = union "SDL_Event";;
   let etype = field sdl_event "type" int;;
-  let window = field sdl_event "window" window_event_f;;
+  let window = field sdl_event "window" WindowEvent.window_event_f;;
   let keyboard = field sdl_event "key" KeyboardEvent.key_event_f;;
     seal sdl_event;;
       
@@ -247,7 +249,7 @@ module Event = struct
     let ty = getf sevent etype in
     match ty with
     |0x100 -> Quit
-    |0x200 ->  Window (window_event_of_window_event_f (getf sevent window))
+    |0x200 ->  Window (WindowEvent.of_window_event_f (getf sevent window))
 
     |0x300 -> begin
 	      let kevent = (getf sevent keyboard) in
