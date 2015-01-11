@@ -274,7 +274,7 @@ end = struct
   let quit () = foreign "IMG_Quit" (void @-> returning void);;
   let load_f = foreign "IMG_LoadTexture" (Render.t @-> string @-> returning Render.texture);;
   let load renderer texname =
-    let tex = load_f renderer texname in
+    let tex = load_f renderer ("resources/images/" ^ texname) in
     if Render.texture_exists tex
     then
       Result.Ok tex

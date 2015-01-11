@@ -13,13 +13,13 @@ let main () =
   let renderer = match (Render.make win 2) with
     | Ok r -> r
     |Error e -> die e in
-  let img = match Image.load renderer "resources/images/bg.png" with
+  let img = match Image.load renderer "bg.png" with
     | Ok i -> i
     |Error e -> die e
   in
 
   let rec iloop () =
-    ignore (Render.copy {x=0;y=0;w=3000;h=3000} {x=0;y=0;w=640;h=480} renderer img);
+    ignore (Render.copy {x=0;y=0;w=0;h=0} {x=0;y=0;w=0;h=0} renderer img);
     Render.present renderer;
     match (Event.poll_event ()) with
     |Quit -> ()
