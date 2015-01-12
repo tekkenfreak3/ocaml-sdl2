@@ -122,11 +122,16 @@ end = struct
 
   let copy_f = foreign "SDL_RenderCopy" (t @-> texture @-> Rect.t @-> Rect.t @-> returning int);;
   let copy renderer texture ?(src={Rect.x=0;Rect.y=0;Rect.w=0;Rect.h=0;}) ?(dest={Rect.x=0;Rect.y=0;Rect.w=0;Rect.h=0}) () =
-    let ret = copy_f renderer texture src dest in
-    if ret = 0 then
-      Result.Ok ()
+    if (dest.w = 0 && dest.h = 0 && (dest.x <> 0 || dest.y <> 0)) (*for the special case of wanting to copy the entire texture over but having its position set *)
+    then
+      let (w,h) = Image.query_teture texture in
+      copy renderer texture ?dest={Rect.x=dest.x;Rect.y=dest.y;Rect.w=w;Rect.h=h}
     else
-      Result.Error (Error.get_error ());;
+      let ret = copy_f renderer texture realsrc realdest in
+      if ret = 0 then
+	Result.Ok ()
+      else
+	Result.Error (Error.get_error ());;
     
   let present = foreign "SDL_RenderPresent" (t @-> returning void);;
 end
@@ -272,6 +277,7 @@ module Image : sig
   val quit : unit -> unit -> unit;;
   val load_f : Render.t -> string -> Render.texture;;
   val load : Render.t -> string -> (Render.texture, string) Result.t;;
+  val query_texture : Render.texture -> int * int;;
 end = struct
   let quit () = foreign "IMG_Quit" (void @-> returning void);;
   let load_f = foreign "IMG_LoadTexture" (Render.t @-> string @-> returning Render.texture);;
@@ -282,6 +288,14 @@ end = struct
       Result.Ok tex
     else
       Result.Error (Error.get_error ());;
+
+  let query_texture_f = foreign "SDL_QueryTexture" (Render.texture @-> ptr uint32_t @-> ptr int @-> ptr int @-> ptr int @-> returning void);;
+
+  let query_texture tex =
+    let w = allocate int 0 in
+    let h = allocate int 0 in
+    query_texture_f tex (from_voidp uint32_t null) (from_voidp int null) w h;
+    ((!@ w), (!@ h));;
 end
   
 module Etc : sig

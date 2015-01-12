@@ -18,16 +18,20 @@ let main () =
     |Error e -> die e
   in
 
+  let (imgw, imgh) = Image.query_texture img in
   let render = Render.copy renderer in
-  let rec iloop () =
-    ignore (render img  ());
+  let rec iloop rect = begin
+    match (render img  ~dest:rect ()) with
+    |Error e -> die e
+    |Ok () -> ();
     Render.present renderer;
     match (Event.poll_event ()) with
     |Quit -> ()
-    |Key k -> Printf.printf "key event: %d %B %B\n" k.timestamp (k.state = Event.KeyboardEvent.Pressed) k.repeat; flush stdout; iloop ()
-    |_ -> iloop ()
+    |Key k -> Printf.printf "key event: %d %B %B\n" k.timestamp (k.state = Event.KeyboardEvent.Pressed) k.repeat; flush stdout; iloop rect
+    |_ -> iloop rect
+    end
   in
-  iloop ();
+  iloop {Rect.x=50;Rect.y=0;Rect.w=640;Rect.h=480;};
   Etc.quit ();; 
 
 let () =
