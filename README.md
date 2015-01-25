@@ -1,0 +1,1 @@
+All assets (C) Daniel Wilkins, under CC-BY-SA 3.0 except for monofur.ttf which is by Tobias Benjamin Köhler and is freely available but I otherwise can't find a license. His website seems to have disappeared.

@@ -64,13 +64,18 @@ end = struct
 
   let init_f = foreign "SDL_Init" (int @-> returning int);;
 
+  let init_ttf_f = foreign "TTF_Init" (void @-> returning int);;
 
   let init flags =
     if init_f flags = 1
     then
       Result.Error (Error.get_error ())
     else
-      Result.Ok ()
+      if (init_ttf_f ()) = -1
+      then
+	Result.Error (Error.get_error ())
+      else
+	Result.Ok ()
 end
 		
 module Window : sig
@@ -317,4 +322,77 @@ end = struct
   let delay = foreign "SDL_Delay" (int @-> returning void);;
   let quit_f = foreign "SDL_Quit" (void @-> returning void);;
   let quit () = quit_f (); exit 0;;
+end
+
+module Surface : sig
+  type t
+  val t : t typ
+  val convert : Render.t -> t -> Render.texture
+end = struct
+  type t = unit ptr
+  let t: t typ = ptr void
+  let convert = foreign "SDL_CreateTextureFromSurface" (Render.t @-> t @-> returning Render.texture)
+end
+	
+module Color : sig
+  type color = {r: int; g: int; b: int; a: int}
+  type t
+  val t : color typ
+  val red : color
+  val green : color
+  val blue : color
+  val yellow : color
+  val purple : color
+  val cyan : color
+end = struct
+  type color = {r: int; g: int; b: int; a: int}
+  type sdl_color
+  let sdl_color : sdl_color structure typ = structure "SDL_Color"
+  let r = field sdl_color "r" uint8_t;;
+  let g = field sdl_color "g" uint8_t;;
+  let b = field sdl_color "b" uint8_t;;
+  let a = field sdl_color "a" uint8_t;;
+  seal sdl_color
+  let sdl_color_of_color color =
+    let ret = make sdl_color in
+    setf ret r (Unsigned.UInt8.of_int color.r);
+    setf ret g (Unsigned.UInt8.of_int color.g);
+    setf ret b (Unsigned.UInt8.of_int color.b);
+    setf ret a (Unsigned.UInt8.of_int color.a);
+    addr ret;;
+  let color_of_sdl_color c =
+    let col = !@ c in
+    {r = (Unsigned.UInt8.to_int (getf col r));g = (Unsigned.UInt8.to_int (getf col g));b = (Unsigned.UInt8.to_int (getf col b));a = (Unsigned.UInt8.to_int (getf col a))};;
+
+  let red = {r=255;g=0;b=0;a=255}
+  let green = {r=0;g=255;b=0;a=255}
+  let blue = {r=255;g=0;b=255;a=255}
+  let purple = {r=255;g=0;b=255;a=255}
+  let yellow = {r=255;g=255;b=0;a=255}
+  let cyan = {r=0;g=255;b=255;a=255}
+  let white = {r=255;g=255;b=255;a=255}
+  let black = {r=0;g=0;b=0;a=255}
+		
+  type t;;
+  let t = view ~read:color_of_sdl_color ~write:sdl_color_of_color (ptr sdl_color)
+end
+	
+module Ttf : sig
+  type t
+  val t : t typ
+  val load : string -> int -> (t, string) Result.t
+  val render : Render.t -> t -> string -> Color.color -> Render.texture
+end = struct
+  type t = unit ptr
+  let t : t typ = ptr void
+  let load_f = foreign "TTF_OpenFont" (string @-> int @-> returning t)
+  let load filename ptsize =
+    let result = load_f ("resources/fonts/" ^ filename) ptsize in
+    if result <> Ctypes.null then
+      Result.Ok result
+    else
+      Result.Error (Error.get_error ())
+  let render_f = foreign "TTF_RenderText_Blended" (t @-> string @-> Color.t @-> returning Surface.t)
+			 
+  let render renderer font text color = Surface.convert renderer (render_f font text color)
 end
