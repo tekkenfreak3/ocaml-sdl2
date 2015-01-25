@@ -1,11 +1,14 @@
 all: build
 
+
+all: build
+
 build:
-	cd src && make
+	cd src && make build
 	cp src/game.native .
 
 debug:
-	cd src && make
+	cd src && make debug
 	cp src/game.byte .
 
 clean:

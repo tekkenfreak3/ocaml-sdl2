@@ -76,10 +76,12 @@ end
 module Window : sig
   type t
   val t : t typ;;
+  val pos_undefined : int;;
   val make : string -> int -> int -> int -> int -> int -> (t, string) Result.t
 end = struct
   type t = unit ptr;;
   let t : t typ = ptr void;;
+  let pos_undefined = 0x1FFF0000;; (*magic*)
   let create_window_f = foreign "SDL_CreateWindow" (string @-> int @-> int @-> int @-> int @-> int @-> returning t);;
   let make title x y w h flags =
     let win = create_window_f title x y w h flags in
@@ -92,7 +94,7 @@ end
 	
 
 
-
+  
 module Render : sig
   type t
   val t : t typ
@@ -102,12 +104,16 @@ module Render : sig
   val make : Window.t -> int -> (t, string) Result.t
   val copy :  t -> texture -> ?src:Rect.rect -> ?dest:Rect.rect -> unit -> (unit, string) Result.t
   val present : t -> unit
+  val query_texture : texture -> int * int;;
+  val no_rect : Rect.rect
 end = struct
   type t = unit ptr;;
   let t : t typ = ptr void;;
   type texture = unit ptr;;
   let texture : texture typ = ptr void;;
 
+  let no_rect = {Rect.x=0;Rect.y=0;Rect.w=0;Rect.h=0};;
+    
   let texture_exists tex =
     tex <> null;;
   let create_renderer_f = foreign "SDL_CreateRenderer" (Window.t @-> int @-> int @-> returning t);;
@@ -121,22 +127,51 @@ end = struct
       Result.Error (Error.get_error ());;
 
   let copy_f = foreign "SDL_RenderCopy" (t @-> texture @-> Rect.t @-> Rect.t @-> returning int);;
-  let copy renderer texture ?(src={Rect.x=0;Rect.y=0;Rect.w=0;Rect.h=0;}) ?(dest={Rect.x=0;Rect.y=0;Rect.w=0;Rect.h=0}) () =
+
+  let query_texture_f = foreign "SDL_QueryTexture" (texture @-> ptr uint32_t @-> ptr int @-> ptr int @-> ptr int @-> returning void);;
+
+  let query_texture tex =
+    let w = allocate int 0 in
+    let h = allocate int 0 in
+    query_texture_f tex (from_voidp uint32_t null) (from_voidp int null) w h;
+    ((!@ w), (!@ h));;
+
+  let rec copy renderer tex ?(src={Rect.x=0;Rect.y=0;Rect.w=0;Rect.h=0;}) ?(dest={Rect.x=0;Rect.y=0;Rect.w=0;Rect.h=0}) () =
     if (dest.w = 0 && dest.h = 0 && (dest.x <> 0 || dest.y <> 0)) (*for the special case of wanting to copy the entire texture over but having its position set *)
     then
-      let (w,h) = Image.query_teture texture in
-      copy renderer texture ?dest={Rect.x=dest.x;Rect.y=dest.y;Rect.w=w;Rect.h=h}
+      let (w,h) = query_texture tex in
+      let ret = copy_f renderer tex no_rect {Rect.x=dest.x;Rect.y=dest.y;Rect.w=w;Rect.h=h} in
+      if ret = 0 then
+	Result.Ok ()
+      else
+	Result.Error (Error.get_error ())
     else
-      let ret = copy_f renderer texture realsrc realdest in
+      let ret = copy_f renderer tex src dest in
       if ret = 0 then
 	Result.Ok ()
       else
 	Result.Error (Error.get_error ());;
     
   let present = foreign "SDL_RenderPresent" (t @-> returning void);;
+
 end
 
+module Image : sig
+  val quit : unit -> unit -> unit;;
+  val load_f : Render.t -> string -> Render.texture;;
+  val load : Render.t -> string -> (Render.texture, string) Result.t;;
+end = struct
+  let quit () = foreign "IMG_Quit" (void @-> returning void);;
+  let load_f = foreign "IMG_LoadTexture" (Render.t @-> string @-> returning Render.texture);;
+  let load renderer texname =
+    let tex = load_f renderer ("resources/images/" ^ texname) in
+    if Render.texture_exists tex
+    then
+      Result.Ok tex
+    else
+      Result.Error (Error.get_error ());;
 
+end
 
 module Event = struct
 
@@ -191,7 +226,7 @@ module Event = struct
     let windowID = field key_event_f "windowID" uint32_t;;
     let state = field key_event_f "state" uint8_t;;
     let repeat = field key_event_f "repeat" uint8_t;;
-    let padding = field key_event_f "padding2" uint16_t;; (*WARNING this is 2 u8s in the original source. it shouldn't mak ea difference but if a bug happens...*)
+    let padding = field key_event_f "padding2" uint16_t;; (*WARNING this is 2 u8s in the original source. it shouldn't make a difference but if a bug happens...*)
     let keysym = field key_event_f "keysym" keysym_f;;
     seal key_event_f;;
 
@@ -273,35 +308,13 @@ module Event = struct
     event_of_sdl_event e;;
 end
 		 
-module Image : sig
-  val quit : unit -> unit -> unit;;
-  val load_f : Render.t -> string -> Render.texture;;
-  val load : Render.t -> string -> (Render.texture, string) Result.t;;
-  val query_texture : Render.texture -> int * int;;
-end = struct
-  let quit () = foreign "IMG_Quit" (void @-> returning void);;
-  let load_f = foreign "IMG_LoadTexture" (Render.t @-> string @-> returning Render.texture);;
-  let load renderer texname =
-    let tex = load_f renderer ("resources/images/" ^ texname) in
-    if Render.texture_exists tex
-    then
-      Result.Ok tex
-    else
-      Result.Error (Error.get_error ());;
 
-  let query_texture_f = foreign "SDL_QueryTexture" (Render.texture @-> ptr uint32_t @-> ptr int @-> ptr int @-> ptr int @-> returning void);;
-
-  let query_texture tex =
-    let w = allocate int 0 in
-    let h = allocate int 0 in
-    query_texture_f tex (from_voidp uint32_t null) (from_voidp int null) w h;
-    ((!@ w), (!@ h));;
-end
   
 module Etc : sig
   val delay : int -> unit
   val quit : unit -> unit
 end = struct
   let delay = foreign "SDL_Delay" (int @-> returning void);;
-  let quit = foreign "SDL_Quit" (void @-> returning void);;
+  let quit_f = foreign "SDL_Quit" (void @-> returning void);;
+  let quit () = quit_f (); exit 0;;
 end
