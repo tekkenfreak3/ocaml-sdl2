@@ -5,6 +5,13 @@ open Ctypes;;
 open Foreign;;
 open Unsigned;;
 open Core;;
+
+module Position : sig
+  type t = {x: int; y:int};;
+end = struct
+  type t = {x:int; y:int};;
+end
+	
 module Rect : sig
   type rect = {x: int; y: int; w: int; h: int};;
   type t;;
@@ -97,30 +104,38 @@ end = struct
       Result.Error (Error.get_error ());;
 end
 	
+module Texture : sig
+  type t
+  val t : t typ
+  val exists : t -> bool
+  val query : t -> int * int
+  val free : t -> unit
+end = struct
+  type t = unit ptr
+  let t : t typ = ptr void
+  let exists tex = tex <> null
+  let query_f = foreign "SDL_QueryTexture" (t @-> ptr uint32_t @-> ptr int @-> ptr int @-> ptr int @-> returning void)
 
+  let query tex =
+    let w = allocate int 0 in
+    let h = allocate int 0 in
+    query_f tex (from_voidp uint32_t null) (from_voidp int null) w h;
+    ((!@ w), (!@ h))
+  let free = foreign "SDL_DestroyTexture" (t @-> returning void)
+end
 
-  
 module Render : sig
   type t
   val t : t typ
-  type texture
-  val texture : texture typ
-  val texture_exists : texture -> bool
+
   val make : Window.t -> int -> (t, string) Result.t
-  val copy :  t -> texture -> ?src:Rect.rect -> ?dest:Rect.rect -> unit -> (unit, string) Result.t
+  val copy :  t -> Texture.t -> Rect.rect -> Rect.rect -> (unit, string) Result.t
   val present : t -> unit
-  val query_texture : texture -> int * int;;
-  val no_rect : Rect.rect
+
 end = struct
   type t = unit ptr;;
   let t : t typ = ptr void;;
-  type texture = unit ptr;;
-  let texture : texture typ = ptr void;;
-
-  let no_rect = {Rect.x=0;Rect.y=0;Rect.w=0;Rect.h=0};;
     
-  let texture_exists tex =
-    tex <> null;;
   let create_renderer_f = foreign "SDL_CreateRenderer" (Window.t @-> int @-> int @-> returning t);;
   
   let make window flags =
@@ -131,31 +146,14 @@ end = struct
     else
       Result.Error (Error.get_error ());;
 
-  let copy_f = foreign "SDL_RenderCopy" (t @-> texture @-> Rect.t @-> Rect.t @-> returning int);;
+  let copy_f = foreign "SDL_RenderCopy" (t @-> Texture.t @-> Rect.t @-> Rect.t @-> returning int);;
 
-  let query_texture_f = foreign "SDL_QueryTexture" (texture @-> ptr uint32_t @-> ptr int @-> ptr int @-> ptr int @-> returning void);;
-
-  let query_texture tex =
-    let w = allocate int 0 in
-    let h = allocate int 0 in
-    query_texture_f tex (from_voidp uint32_t null) (from_voidp int null) w h;
-    ((!@ w), (!@ h));;
-
-  let rec copy renderer tex ?(src={Rect.x=0;Rect.y=0;Rect.w=0;Rect.h=0;}) ?(dest={Rect.x=0;Rect.y=0;Rect.w=0;Rect.h=0}) () =
-    if (dest.w = 0 && dest.h = 0 && (dest.x <> 0 || dest.y <> 0)) (*for the special case of wanting to copy the entire texture over but having its position set *)
-    then
-      let (w,h) = query_texture tex in
-      let ret = copy_f renderer tex no_rect {Rect.x=dest.x;Rect.y=dest.y;Rect.w=w;Rect.h=h} in
-      if ret = 0 then
-	Result.Ok ()
-      else
-	Result.Error (Error.get_error ())
+  let copy renderer tex src dest =
+    if (copy_f renderer tex src dest) = 0 then
+      Result.Ok ()
     else
-      let ret = copy_f renderer tex src dest in
-      if ret = 0 then
-	Result.Ok ()
-      else
-	Result.Error (Error.get_error ());;
+      Result.Error (Error.get_error ())
+
     
   let present = foreign "SDL_RenderPresent" (t @-> returning void);;
 
@@ -163,14 +161,14 @@ end
 
 module Image : sig
   val quit : unit -> unit -> unit;;
-  val load_f : Render.t -> string -> Render.texture;;
-  val load : Render.t -> string -> (Render.texture, string) Result.t;;
+  val load_f : Render.t -> string -> Texture.t;;
+  val load : Render.t -> string -> (Texture.t, string) Result.t;;
 end = struct
   let quit () = foreign "IMG_Quit" (void @-> returning void);;
-  let load_f = foreign "IMG_LoadTexture" (Render.t @-> string @-> returning Render.texture);;
+  let load_f = foreign "IMG_LoadTexture" (Render.t @-> string @-> returning Texture.t);;
   let load renderer texname =
     let tex = load_f renderer ("resources/images/" ^ texname) in
-    if Render.texture_exists tex
+    if Texture.exists tex
     then
       Result.Ok tex
     else
@@ -327,11 +325,11 @@ end
 module Surface : sig
   type t
   val t : t typ
-  val convert : Render.t -> t -> Render.texture
+  val convert : Render.t -> t -> Texture.t
 end = struct
   type t = unit ptr
   let t: t typ = ptr void
-  let convert_t = foreign "SDL_CreateTextureFromSurface" (Render.t @-> t @-> returning Render.texture)
+  let convert_t = foreign "SDL_CreateTextureFromSurface" (Render.t @-> t @-> returning Texture.t)
 			        
   let free = foreign "SDL_FreeSurface" (t @-> returning void)
   let convert renderer surface =
@@ -389,7 +387,7 @@ module Ttf : sig
   type t
   val t : t typ
   val load : string -> int -> (t, string) Result.t
-  val render : Render.t -> t -> string -> Color.color -> Render.texture
+  val render : Render.t -> t -> string -> Color.color -> Texture.t
 end = struct
   type t = unit ptr
   let t : t typ = ptr void

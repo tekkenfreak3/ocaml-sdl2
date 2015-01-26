@@ -12,4 +12,7 @@ debug:
 	cp src/game.byte .
 
 clean:
-	cd src && make clean
+	find . -name "*~" -exec rm {} \;
+	rm -rf src/_build
+	find . -regextype posix-basic -regex ".*/game\.\(native\|byte\)" -exec rm {} \;
+	find . -name  "*inferred*" -exec rm {} \;
