@@ -331,7 +331,14 @@ module Surface : sig
 end = struct
   type t = unit ptr
   let t: t typ = ptr void
-  let convert = foreign "SDL_CreateTextureFromSurface" (Render.t @-> t @-> returning Render.texture)
+  let convert_t = foreign "SDL_CreateTextureFromSurface" (Render.t @-> t @-> returning Render.texture)
+			        
+  let free = foreign "SDL_FreeSurface" (t @-> returning void)
+  let convert renderer surface =
+    let ret = convert_t renderer surface in
+    free surface;
+    ret
+
 end
 	
 module Color : sig
@@ -346,22 +353,23 @@ module Color : sig
   val cyan : color
 end = struct
   type color = {r: int; g: int; b: int; a: int}
+
   type sdl_color
-  let sdl_color : sdl_color structure typ = structure "SDL_Color"
+  let sdl_color : sdl_color structure typ = structure "SDL_Color";;
   let r = field sdl_color "r" uint8_t;;
   let g = field sdl_color "g" uint8_t;;
   let b = field sdl_color "b" uint8_t;;
   let a = field sdl_color "a" uint8_t;;
-  seal sdl_color
+  seal sdl_color;;
   let sdl_color_of_color color =
+    let toint = Unsigned.UInt8.to_int in
     let ret = make sdl_color in
     setf ret r (Unsigned.UInt8.of_int color.r);
     setf ret g (Unsigned.UInt8.of_int color.g);
     setf ret b (Unsigned.UInt8.of_int color.b);
     setf ret a (Unsigned.UInt8.of_int color.a);
-    addr ret;;
-  let color_of_sdl_color c =
-    let col = !@ c in
+    ret;;
+  let color_of_sdl_color col =
     {r = (Unsigned.UInt8.to_int (getf col r));g = (Unsigned.UInt8.to_int (getf col g));b = (Unsigned.UInt8.to_int (getf col b));a = (Unsigned.UInt8.to_int (getf col a))};;
 
   let red = {r=255;g=0;b=0;a=255}
@@ -374,7 +382,7 @@ end = struct
   let black = {r=0;g=0;b=0;a=255}
 		
   type t;;
-  let t = view ~read:color_of_sdl_color ~write:sdl_color_of_color (ptr sdl_color)
+  let t = view ~read:color_of_sdl_color ~write:sdl_color_of_color sdl_color
 end
 	
 module Ttf : sig
@@ -392,7 +400,6 @@ end = struct
       Result.Ok result
     else
       Result.Error (Error.get_error ())
-  let render_f = foreign "TTF_RenderText_Blended" (t @-> string @-> Color.t @-> returning Surface.t)
-			 
+  let render_f = foreign "TTF_RenderText_Solid" (t @-> string @-> Color.t @-> returning Surface.t)
   let render renderer font text color = Surface.convert renderer (render_f font text color)
 end

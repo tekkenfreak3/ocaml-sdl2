@@ -29,16 +29,20 @@ let () =
 				  |Pressed -> Printf.printf "Pressed!\n");
 				    flush stdout; end);
 
+  let random_color () =
+    {Color.r=(Random.int 256);Color.g=(Random.int 256);Color.b=(Random.int 256);Color.a=(Random.int 256)} in
+  let texts = Array.of_list ["This is some text I think"; "yeah"; "There was once a bug which looked amazing; luckily I recreated it"; "this all really doesn't matter but it's nice to test text rendering with a bunch of different sizes. Sadly it doesn't wrap"] in
   let rec loop () =
     let nothing = match (Event.poll_event ()) with
     |Quit -> Etc.quit ()
     |Key k -> (Highlevel.Input.handle_key k)
     |_ -> () in
-    (* ignore (Render.copy renderer background ()); *)
-    let nope = match (Render.copy renderer (Ttf.render renderer font "Eep" Color.blue) ()) with
-    |Core.Result.Ok () -> ()
-    |Core.Result.Error e -> failwith e in
-  
+    let textnum = Random.int (Array.length texts) in (* This works because it's an exclusive parameter *)
+    ignore (Render.copy renderer background ());
+    let text = Ttf.render renderer font texts.(textnum) (random_color ()) in
+    ignore (Render.copy renderer text ~dest:{Rect.x=16;Rect.y=16;Rect.w=0;Rect.h=0} ());
+    Etc.delay 100;
+
     Render.present renderer;
     loop () in
   loop ()
