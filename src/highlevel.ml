@@ -1,20 +1,10 @@
 open Sdl2;;
 
-module Input : sig
-  val register_key : Event.KeyboardEvent.keysym -> (Event.KeyboardEvent.t -> unit) -> unit
-  val handle_key : Event.KeyboardEvent.t -> unit
+
+module Position : sig
+  type t = {x: int; y:int};;
 end = struct
-  let keybinds = Hashtbl.create 128
-	     
-  let register_key : Event.KeyboardEvent.keysym -> (Event.KeyboardEvent.t -> unit) -> unit = fun key callback -> Hashtbl.add keybinds key callback
-
-  let handle_key key =
-    let module Ke = Event.KeyboardEvent in
-
-    let k = key.Ke.keysym in
-    if Hashtbl.mem keybinds k then
-      (Hashtbl.find keybinds k) key
-    
+  type t = {x:int; y:int};;
 end
 
 module Draw : sig
@@ -35,3 +25,25 @@ end = struct
 		   Render.copy renderer texture srcrect {Rect.x=p.x;Rect.y=p.y;Rect.w=w;Rect.h=h}
 		 end
 end
+
+type entities = (string * Position.t) list
+				      
+module Input : sig
+  val register_key : Event.KeyboardEvent.keysym -> (Event.KeyboardEvent.t -> entities -> entities) -> unit
+  val handle_key : Event.KeyboardEvent.t -> entities -> entities
+end = struct
+  let keybinds = Hashtbl.create 128
+	     
+  let register_key : Event.KeyboardEvent.keysym -> (Event.KeyboardEvent.t -> entities -> entities) -> unit = fun key callback -> Hashtbl.add keybinds key callback
+
+  let handle_key key ents =
+    let module Ke = Event.KeyboardEvent in
+
+    let k = key.Ke.keysym in
+    if Hashtbl.mem keybinds k then
+      ((Hashtbl.find keybinds k) key ents)
+    else
+      ents
+    
+end
+

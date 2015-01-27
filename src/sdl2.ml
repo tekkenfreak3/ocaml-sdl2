@@ -238,8 +238,8 @@ module Event = struct
     let scancode_of_sdl_scancode sk = match sk with
       |29 -> ScancodeZ
       |41 -> ScancodeEsc
-      |79 -> ScancodeLeft
-      |80 -> ScancodeRight
+      |79 -> ScancodeRight
+      |80 -> ScancodeLeft
       |81 -> ScancodeDown
       |82 -> ScancodeUp
       |_ -> ScancodeUnknown;;
