@@ -1,14 +1,21 @@
 open Sdl2;;
+open Core.Std;;
+  
 let ordie a = match a with 
-  |Core.Result.Ok a -> a
-  |Core.Result.Error e -> failwith e
+  |Ok a -> a
+  |Error e -> failwith e
 
 
 
 module Position : sig
   type t = {x: int; y:int}
+  val of_rect : Rect.rect -> t
+  val to_rect : t -> Texture.t -> Rect.rect
 end = struct
-   type t = {x:int; y:int}
+  type t = {x:int; y:int}
+  let of_rect rect = {x=rect.Rect.x;y=rect.Rect.y}
+  let to_rect self reference = let (w,h) = Texture.query reference in
+    {Rect.x=self.x;Rect.y=self.y;Rect.w=w;Rect.h=h}
 end
 
 module Draw : sig
@@ -24,10 +31,7 @@ end = struct
     let srcrect = {Rect.x=0;Rect.y=0;Rect.w=0;Rect.h=0} in
     match pos with
     |Rect r -> Render.copy renderer texture srcrect r
-    |Position p -> begin
-		   let (w, h) = Texture.query texture in
-		   Render.copy renderer texture srcrect {Rect.x=p.x;Rect.y=p.y;Rect.w=w;Rect.h=h}
-		 end
+    |Position p -> Render.copy renderer texture srcrect (Position.to_rect p texture)
 end
 
 (* module type Entity = sig *)
@@ -55,7 +59,7 @@ module Player = struct
   type t = {pos: Position.t; tex: Texture.t; x_speed: float; y_speed: float}
   let texture self = self.tex;;
   let position self = self.pos;;
-  let update self = Printf.printf "%f %f\n" self.x_speed self.y_speed; flush stdout; {pos= {x=self.pos.x + (int_of_float self.x_speed);y= self.pos.y + (int_of_float self.y_speed)}; tex= self.tex; x_speed = steptowards self.x_speed 0.0 0.1; y_speed = steptowards self.y_speed 0.0 0.1}
+  let update self = Printf.printf "%f %f\n" self.x_speed self.y_speed; flush stdout; {pos= {x=self.pos.x + (Float.to_int self.x_speed);y= self.pos.y + (Float.to_int self.y_speed)}; tex= self.tex; x_speed = steptowards self.x_speed 0.0 0.1; y_speed = steptowards self.y_speed 0.0 0.1}
   let set_speed self target =
     let (xs, ys) = target in
     {pos=self.pos;tex=self.tex;x_speed=xs;y_speed=ys}
@@ -71,20 +75,21 @@ type entities = (string * entity) list
 
 		
 module Input : sig
-  val register_key : Event.KeyboardEvent.keysym -> (Event.KeyboardEvent.t -> entities -> entities) -> unit
+  val register_key : Event.KeyboardEvent.keysym -> (Event.KeyboardEvent.t -> entities ->entities) -> unit
   val handle_key : Event.KeyboardEvent.t -> entities -> entities
+  (* val wants_key : Event.KeyboardEvent.t -> entities -> (string * Event.t) list *)
 end = struct
-  let keybinds = Hashtbl.create 128
+  let keybinds = Hashtbl.Poly.create ()
 	     
-  let register_key : Event.KeyboardEvent.keysym -> (Event.KeyboardEvent.t -> entities -> entities) -> unit = fun key callback -> Hashtbl.add keybinds key callback
+  let register_key : Event.KeyboardEvent.keysym -> (Event.KeyboardEvent.t -> entities -> entities) -> unit = fun key callback -> ignore (Hashtbl.add keybinds ~key ~data:callback)
+											      
+  let handle_key key entities = match (Hashtbl.find keybinds key.Event.KeyboardEvent.keysym) with
+    |Some f -> f key entities
+    |None -> entities
 
-  let handle_key key ents =
-    let module Ke = Event.KeyboardEvent in
-
-    let k = key.Ke.keysym in
-    if Hashtbl.mem keybinds k then
-      ((Hashtbl.find keybinds k) key ents)
-    else
-      ents
-    
+  (* let wants_key key entities  = *)
+  (*   let module Ke = Event.KeyboardEvent in *)
+  (*   Hashtbl.find_all key entities *)
 end
+
+   

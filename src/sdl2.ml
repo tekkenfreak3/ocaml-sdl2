@@ -4,7 +4,7 @@
 open Ctypes;;
 open Foreign;;
 open Unsigned;;
-open Core;;
+open Core.Std;;
 
 module Position : sig
   type t = {x: int; y:int};;
@@ -269,6 +269,8 @@ module Event = struct
     type t = {timestamp: int; window_id: int; state: key_state; repeat: bool; keysym: keysym};;
 
     let of_key_event_f ke = {timestamp= (Unsigned.UInt32.to_int (getf ke timestamp)); window_id= (Unsigned.UInt32.to_int (getf ke windowID)); state= (key_state_of_sdl_keystate (getf ke state)); repeat= (bool_of_int (Unsigned.UInt8.to_int (getf ke repeat)));keysym = {scancode= (scancode_of_sdl_scancode (((getf ke keysym) |> getf) scancode)) ;modkey = (modkey_of_sdl_modkey (((getf ke keysym) |> getf) modkey))}}
+
+    let state = foreign "SDL_GetKeyboardState" (ptr int @-> returning (ptr uint8_t))
   end
 
   type t =
@@ -292,7 +294,7 @@ module Event = struct
     let ty = getf sevent etype in
     match ty with
     |0x100 -> Quit
-    |0x200 ->  Window (WindowEvent.of_window_event_f (getf sevent window))
+    |0x200 -> Window (WindowEvent.of_window_event_f (getf sevent window))
 
     |0x300 -> begin
 	      let kevent = (getf sevent keyboard) in
