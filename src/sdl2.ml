@@ -21,8 +21,8 @@ end = struct
 
   type sdl_rect;;
   let sdl_rect : sdl_rect structure typ = structure "SDL_Rect";;
-  let x = field sdl_rect "x" int;;
-  let y = field sdl_rect "y" int;;
+  let x = field sdl_rect "y" int;;
+  let y = field sdl_rect "x" int;;
   let w = field sdl_rect "w" int;;
   let h = field sdl_rect "h" int;;
   seal sdl_rect;;

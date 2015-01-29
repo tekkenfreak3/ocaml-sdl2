@@ -6,9 +6,9 @@ let ordie a = match a with
 
 
 module Position : sig
-  type t = {x: int; y:int};;
+  type t = {x: int; y:int}
 end = struct
-  type t = {x:int; y:int};;
+   type t = {x:int; y:int}
 end
 
 module Draw : sig
@@ -55,17 +55,21 @@ module Player = struct
   type t = {pos: Position.t; tex: Texture.t; x_speed: float; y_speed: float}
   let texture self = self.tex;;
   let position self = self.pos;;
-  (* let update self = { pos= { self.pos.Position.x + self.x_speed;self.pos.Position.y + self.y_speed};tex=self.tex;x_speed=self.x_speed;y_speed=self.y_speed };; *)
   let update self = Printf.printf "%f %f\n" self.x_speed self.y_speed; flush stdout; {pos= {x=self.pos.x + (int_of_float self.x_speed);y= self.pos.y + (int_of_float self.y_speed)}; tex= self.tex; x_speed = steptowards self.x_speed 0.0 0.1; y_speed = steptowards self.y_speed 0.0 0.1}
   let set_speed self target =
     let (xs, ys) = target in
-    {pos=self.pos;tex=self.tex;x_speed=xs;y_speed=ys};;
+    {pos=self.pos;tex=self.tex;x_speed=xs;y_speed=ys}
+  let get_speed self = (self.x_speed, self.y_speed)
   let make renderer = {pos={Position.x=0;Position.y=0};tex= ordie (Image.load renderer "avatar.png");x_speed=0.0;y_speed=3.0}
 end
 
+module Coin = struct
+  type t = {pos: Rect.t; tex: Texture.t;}
+end
 type entity = |Player of Player.t
 type entities = (string * entity) list
-				      
+
+		
 module Input : sig
   val register_key : Event.KeyboardEvent.keysym -> (Event.KeyboardEvent.t -> entities -> entities) -> unit
   val handle_key : Event.KeyboardEvent.t -> entities -> entities
@@ -84,4 +88,3 @@ end = struct
       ents
     
 end
-

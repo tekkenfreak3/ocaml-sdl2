@@ -29,24 +29,28 @@ let () =
 		     (fun k es ->
 		      let p = match (List.assoc "player" es) with
 			|Player e -> e in
+		      let (xs, _) = Player.get_speed p in
 		      ("player", Player (Player.set_speed p (0.0, -5.0))) ::(List.remove_assoc "player" es));
 
   Input.register_key {Ke.scancode=Ke.ScancodeDown;Ke.modkey=Ke.ModNone}
 		     (fun k es ->
 		      let p = match (List.assoc "player" es) with
 			|Player p -> p in
-		      ("player", Player (Player.set_speed p (0.0, 5.0))) ::(List.remove_assoc "player" es));
+		      let (xs, _) = Player.get_speed p in
+		      ("player", Player (Player.set_speed p (xs, 5.0))) ::(List.remove_assoc "player" es));
 
   Input.register_key {Ke.scancode=Ke.ScancodeLeft;Ke.modkey=Ke.ModNone}
 		     (fun k es ->
 		      let p = match (List.assoc "player" es) with
 			|Player p -> p in
-		      ("player", Player (Player.set_speed p (-5.0,0.0))) ::(List.remove_assoc "player" es));
+		      let (_, ys) = Player.get_speed p in
+		      ("player", Player (Player.set_speed p (-5.0,ys))) ::(List.remove_assoc "player" es));
   Input.register_key {Ke.scancode=Ke.ScancodeRight;Ke.modkey=Ke.ModNone}
 		     (fun k es ->
 		      let p = match (List.assoc "player" es) with
 			|Player p -> p in
-		      ("player", Player (Player.set_speed p (5.0,0.0))) ::(List.remove_assoc "player" es));
+		      let (_, ys) = Player.get_speed p in
+		      ("player", Player (Player.set_speed p (5.0,ys))) ::(List.remove_assoc "player" es));
 
   let rec loop entities =
     ignore (match (Event.poll_event ()) with
