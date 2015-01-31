@@ -59,11 +59,22 @@ module Player = struct
   type t = {pos: Position.t; tex: Texture.t; x_speed: float; y_speed: float}
   let texture self = self.tex;;
   let position self = self.pos;;
-  let update self = Printf.printf "%f %f\n" self.x_speed self.y_speed; flush stdout; {pos= {x=self.pos.x + (Float.to_int self.x_speed);y= self.pos.y + (Float.to_int self.y_speed)}; tex= self.tex; x_speed = steptowards self.x_speed 0.0 0.1; y_speed = steptowards self.y_speed 0.0 0.1}
+  let update self = Printf.printf "%f %f\n" self.x_speed self.y_speed; flush stdout; {pos= {x=self.pos.x + (Float.to_int self.x_speed);y= self.pos.y + (Float.to_int self.y_speed)}; tex= self.tex; x_speed = steptowards self.x_speed 0. 5.; y_speed = steptowards self.y_speed 0. 5.}
   let set_speed self target =
     let (xs, ys) = target in
     {pos=self.pos;tex=self.tex;x_speed=xs;y_speed=ys}
   let get_speed self = (self.x_speed, self.y_speed)
+  let react self event =
+    let module Ke = Event.KeyboardEvent in
+    match event with
+    |Event.Key ke -> set_speed self (match ke.Ke.keysym.scancode with
+				     |Ke.ScancodeUp -> (0., -5.)
+				     |Ke.ScancodeDown -> (0., 5.)
+				     |Ke.ScancodeLeft -> (-5., 0.)
+				     |Ke.ScancodeRight -> (5., 0.)
+				     |_ -> get_speed self)
+    |_ -> self
+
   let make renderer = {pos={Position.x=0;Position.y=0};tex= ordie (Image.load renderer "avatar.png");x_speed=0.0;y_speed=3.0}
 end
 
@@ -80,7 +91,7 @@ module Input : sig
   (* val wants_key : Event.KeyboardEvent.t -> entities -> (string * Event.t) list *)
 end = struct
   let keybinds = Hashtbl.Poly.create ()
-	     
+  
   let register_key : Event.KeyboardEvent.keysym -> (Event.KeyboardEvent.t -> entities -> entities) -> unit = fun key callback -> ignore (Hashtbl.add keybinds ~key ~data:callback)
 											      
   let handle_key key entities = match (Hashtbl.find keybinds key.Event.KeyboardEvent.keysym) with
