@@ -273,7 +273,8 @@ module Event = struct
     let state_f = foreign "SDL_GetKeyboardState" (ptr int @-> returning (ptr uint8_t));;
     let state =
       let i = allocate int 0 in
-      state_f i
+      let pt = state_f i in
+      CArray.to_list (CArray.from_ptr pt (!@ i));;
   end
 
   type t =
