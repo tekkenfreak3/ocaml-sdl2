@@ -271,7 +271,7 @@ module Event = struct
     let of_key_event_f ke = {timestamp= (Unsigned.UInt32.to_int (getf ke timestamp)); window_id= (Unsigned.UInt32.to_int (getf ke windowID)); state= (key_state_of_sdl_keystate (getf ke state)); repeat= (bool_of_int (Unsigned.UInt8.to_int (getf ke repeat)));keysym = {scancode= (scancode_of_sdl_scancode (((getf ke keysym) |> getf) scancode)) ;modkey = (modkey_of_sdl_modkey (((getf ke keysym) |> getf) modkey))}}
 
     let state_f = foreign "SDL_GetKeyboardState" (ptr int @-> returning (ptr uint8_t));;
-    let state =
+    let state () =
       let i = allocate int 0 in
       let pt = state_f i in
       CArray.to_list (CArray.from_ptr pt (!@ i));;

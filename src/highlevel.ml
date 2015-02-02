@@ -59,13 +59,19 @@ module Player = struct
   type t = {pos: Position.t; tex: Texture.t; x_speed: float; y_speed: float}
   let texture self = self.tex;;
   let position self = self.pos;;
-  let update self = Printf.printf "%f %f\n" self.x_speed self.y_speed; flush stdout; {pos= {x=self.pos.x + (Float.to_int self.x_speed);y= self.pos.y + (Float.to_int self.y_speed)}; tex= self.tex; x_speed = steptowards self.x_speed 0. 5.; y_speed = steptowards self.y_speed 0. 5.}
+  let update self = {pos= {x=self.pos.x + (Float.to_int self.x_speed);y= self.pos.y + (Float.to_int self.y_speed)}; tex= self.tex; x_speed = steptowards self.x_speed 0. 5.; y_speed = steptowards self.y_speed 0. 5.}
   let set_speed self target =
     let (xs, ys) = target in
     {pos=self.pos;tex=self.tex;x_speed=xs;y_speed=ys}
   let get_speed self = (self.x_speed, self.y_speed)
   let react self event =
     let module Ke = Event.KeyboardEvent in
+    let rec print_keys l =
+      match l with
+      |[] -> Printf.printf"\n\n\n"
+      | e :: l -> Printf.printf "%d " (Unsigned.UInt8.to_int e); flush stdout; print_keys l in
+    let keys = Ke.state () in
+    print_keys keys;
     match event with
     |Event.Key ke -> set_speed self (match ke.Ke.keysym.scancode with
 				     |Ke.ScancodeUp -> (0., -5.)
