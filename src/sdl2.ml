@@ -244,6 +244,15 @@ module Event = struct
       |82 -> ScancodeUp
       |_ -> ScancodeUnknown;;
 
+      let int_of_scancode sk = match sk with
+	|ScancodeZ -> 29
+	|ScancodeEsc -> 41
+	|ScancodeRight -> 79
+	|ScancodeLeft -> 80
+	|ScancodeDown -> 81
+	|ScancodeUp -> 82
+	|ScancodeUnknown -> 0;;
+
 
     (* sym isn't implemented for now. it's just a mapping of a key to its unicode representation*)
     type modkey = ModNone | ModLShift | ModRShift | ModLCtrl | ModRCtrl | ModLAlt | ModRAlt | ModLGui | ModRGui | ModNumLk | ModCaps | ModMode;;
@@ -274,7 +283,10 @@ module Event = struct
     let state () =
       let i = allocate int 0 in
       let pt = state_f i in
-      CArray.to_list (CArray.from_ptr pt (!@ i));;
+      let bool_of_int i = match Unsigned.UInt8.to_int i with
+	|0 -> false
+	|_ -> true in
+      List.to_array (List.map ~f:bool_of_int (CArray.to_list (CArray.from_ptr pt (!@ i))));;
   end
 
   type t =
@@ -404,6 +416,6 @@ end = struct
       Result.Ok result
     else
       Result.Error (Error.get_error ())
-  let render_f = foreign "TTF_RenderText_Solid" (t @-> string @-> Color.t @-> returning Surface.t)
+  let render_f = foreign "TTF_RenderText_Blended" (t @-> string @-> Color.t @-> returning Surface.t)
   let render renderer font text color = Surface.convert renderer (render_f font text color)
 end

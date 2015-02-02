@@ -55,7 +55,6 @@ let () =
 		  |Player p -> p in
     ignore (match (Event.poll_event ()) with
     |Quit -> Etc.quit ()
-    |Key k -> loop ["player", (Player (Player.update (Player.react player (Key k))))]
     |None -> begin (*Check if we have a pressed key *)
 	     end
     |_ -> ()
@@ -70,5 +69,5 @@ let () =
     Etc.delay (1000 / 30);
 
     Texture.free text;
-    loop ["player", Player (Player.update player)] in
+    loop ["player", Player (Player.update (Player.react player))] in
   loop ["player", Player (Player.make renderer)]
